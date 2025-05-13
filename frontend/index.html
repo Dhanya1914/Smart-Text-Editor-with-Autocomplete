@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Code Editor</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.2.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --primary-light: #818cf8;
+            --secondary-color: #10b981;
+            --bg-dark: #1e1e1e;
+            --bg-darker: #181818;
+            --bg-lighter: #252526;
+            --bg-code-block: #2d2d30;
+            --text-color: #d4d4d4;
+            --text-light: #9ca3af;
+            --text-dim: #6b7280;
+            --border-color: #404040;
+            --selection-bg: #264f78;
+            --line-number-color: #858585;
+            --line-highlight: rgba(55, 65, 81, 0.4);
+            --dropdown-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+            --menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+            --active-tab-border: #4f46e5;
+            --tab-bg: #2d2d30;
+            --syntax-keyword: #569cd6;
+            --syntax-string: #ce9178;
+            --syntax-comment: #6a9955;
+            --syntax-function: #dcdcaa;
+            --syntax-variable: #9cdcfe;
+            --syntax-number: #b5cea8;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .app-container {
+            display: flex;
+            flex: 1;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* Activity Bar (left sidebar) */
+        .activity-bar {
+            width: 50px;
+            background: var(--bg-darker);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            border-right: 1px solid var(--border-color);
+            height: 100%;
+        }
+
+        .activity-item {
+            color: var(--text-light);
+            font-size: 20px;
+            width: 100%;
+            padding: 15px 0;
+            display: flex;
+            justify-content: center;
+            cursor: pointer;
+            border-left: 2px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .activity-item:hover {
+            color: var(--text-color);
+        }
+
+        .activity-item.active {
+            color: var(--text-color);
+            border-left-color: var(--primary-color);
+            background: var(--bg-lighter);
+        }
+
+        /* Side Bar */
+        .sidebar {
+            width: 260px;
+            background: var(--bg-dark);
+            border-right: 1px solid var(--border-color);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-header {
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            color: var(--text-dim);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .sidebar-header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sidebar-action {
+            cursor: pointer;
+            color: var(--text-light);
+            transition: color 0.2s;
+        }
+
+        .sidebar-action:hover {
+            color: var(--text-color);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .file-explorer {
+            padding: 4px 0;
+        }
+
+        .explorer-section {
+            margin-bottom: 10px;
+        }
+
+        .explorer-section-header {
+            padding: 4px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 11px;
+            color: var(--text-dim);
+            cursor: pointer;
+        }
+
+        .explorer-section-header:hover {
+            background: var(--bg-lighter);
+        }
+
+        .explorer-section-title {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .folder-item {
+            padding: 4px 12px 4px 20px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .folder-item:hover {
+            background: var(--bg-lighter);
+        }
+
+        .file-item {
+            padding: 4px 12px 4px 36px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .file-item:hover {
+            background: var(--bg-lighter);
+        }
+
+        .file-item.active {
+            background: var(--bg-lighter);
+            color: var(--primary-light);
+        }
+
+        .file-icon {
+            color: var(--text-light);
+            font-size: 14px;
+            width: 16px;
+            text-align: center;
+        }
+
+        /* Editor Area */
+        .editor-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .editor-tabs {
+            background: var(--bg-darker);
+            display: flex;
+            border-bottom: 1px solid var(--border-color);
+            user-select: none;
+        }
+
+        .editor-tab {
+            padding: 8px 16px;
+            background: var(--tab-bg);
+            color: var(--text-light);
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-right: 1px solid var(--border-color);
+            cursor: pointer;
+            position: relative;
+            min-width: 140px;
+            max-width: 200px;
+        }
+
+        .editor-tab.active {
+            background: var(--bg-dark);
+            color: var(--text-color);
+        }
+
+        .editor-tab.active::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--active-tab-border);
+        }
+
+        .tab-close {
+            margin-left: auto;
+            color: var(--text-dim);
+            transition: color 0.2s;
+        }
+
+        .tab-close:hover {
+            color: var(--text-color);
+        }
+
+        .editor-wrapper {
+            flex: 1;
+            display: flex;
+            position: relative;
+            background: var(--bg-dark);
+            overflow: hidden;
+        }
+
+        .editor-gutter {
+            background: var(--bg-darker);
+            border-right: 1px solid var(--border-color);
+            padding: 15px 0;
+            width: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+
+        .line-number {
+            padding: 0 15px 0 0;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--line-number-color);
+            height: 22px;
+            display: flex;
+            align-items: center;
+            letter-spacing: 0.2px;
+        }
+
+        .editor-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding-right: 5px;
+        }
+
+        .highlight-line {
+            position: absolute;
+            left: 0;
+            right: 0;
+            height: 22px;
+            background: var(--line-highlight);
+            pointer-events: none;
+        }
+        
+        #editor {
+            flex: 1;
+            padding: 15px;
+            background: transparent;
+            color: var(--text-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            line-height: 22px;
+            border: none;
+            outline: none;
+            resize: none;
+            tab-size: 4;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            letter-spacing: 0.3px;
+        }
+        
+        #editor::selection {
+            background: var(--selection-bg);
+        }
+
+        .editor-scrollbar {
+            position: absolute;
+            right: 4px;
+            top: 8px;
+            bottom: 8px;
+            width: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .scrollbar-thumb {
+            width: 8px;
+            height: 100px;
+            background: var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .scrollbar-thumb:hover {
+            background: var(--text-dim);
+        }
+
+        .minimap {
+            position: absolute;
+            right: 0;
+            top: 0;
+            bottom: 0;
+            width: 60px;
+            background: var(--bg-darker);
+            border-left: 1px solid var(--border-color);
+            opacity: 0.8;
+            display: none; /* Hidden by default, can be toggled */
+        }
+
+        /* Dropdown for autocomplete */
+        #dropdown {
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: var(--bg-code-block);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            max-height: 200px;
+            overflow-y: auto;
+            width: 280px;
+            box-shadow: var(--dropdown-shadow);
+            z-index: 100;
+            display: none;
+            font-family: 'JetBrains Mono', monospace;
+            animation: fadeIn 0.15s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-5px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .dropdown-item {
+            padding: 8px 12px;
+            color: var(--text-color);
+            cursor: pointer;
+            border-left: 3px solid transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.1s;
+        }
+
+        .dropdown-item:hover, 
+        .dropdown-item.active {
+            background: var(--bg-lighter);
+            border-left-color: var(--primary-color);
+        }
+
+        .item-icon {
+            color: var(--primary-color);
+            width: 16px;
+            text-align: center;
+        }
+
+        .item-content {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .item-name {
+            font-size: 13px;
+        }
+
+        .item-type {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .item-right {
+            color: var(--text-dim);
+            font-size: 11px;
+        }
+
+        .loading {
+            padding: 8px 12px;
+            color: var(--text-light);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Status Bar */
+        .status-bar {
+            height: 22px;
+            background: var(--bg-darker);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 15px;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+        
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 0 10px;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .status-item:hover {
+            background: var(--bg-lighter);
+        }
+
+        /* Tooltips for code */
+        .tooltip {
+            position: absolute;
+            background: var(--bg-code-block);
+            border: 1px solid var(--border-color);
+            padding: 8px 12px;
+            border-radius: 3px;
+            box-shadow: var(--menu-shadow);
+            max-width: 300px;
+            font-size: 12px;
+            z-index: 200;
+            display: none;
+        }
+
+        .tooltip-title {
+            color: var(--primary-light);
+            margin-bottom: 4px;
+            font-weight: 500;
+        }
+
+        .tooltip-content {
+            color: var(--text-light);
+            line-height: 1.4;
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 10px;
+            height: 10px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-dark);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--bg-lighter);
+            border-radius: 5px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-color);
+        }
+
+        /* Animations and Transitions */
+        .animate-pulse {
+            animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .syntax-highlight {
+            color: inherit;
+            transition: color 0.3s ease;
+        }
+
+        .syntax-keyword { color: var(--syntax-keyword); }
+        .syntax-string { color: var(--syntax-string); }
+        .syntax-comment { color: var(--syntax-comment); }
+        .syntax-function { color: var(--syntax-function); }
+        .syntax-variable { color: var(--syntax-variable); }
+        .syntax-number { color: var(--syntax-number); }
+
+        /* Context Menu */
+        .context-menu {
+            position: absolute;
+            background: var(--bg-code-block);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            min-width: 160px;
+            box-shadow: var(--menu-shadow);
+            z-index: 300;
+            display: none;
+        }
+
+        .menu-item {
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .menu-item:hover {
+            background: var(--bg-lighter);
+        }
+
+        .menu-separator {
+            height: 1px;
+            background: var(--border-color);
+            margin: 4px 0;
+        }
+
+        .menu-shortcut {
+            margin-left: auto;
+            color: var(--text-dim);
+        }
+
+        /* Terminal Panel */
+        .terminal-panel {
+            display: none;
+            height: 200px;
+            background: var(--bg-darker);
+            border-top: 1px solid var(--border-color);
+            color: var(--text-color);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            padding: 8px;
+            overflow: auto;
+        }
+
+        .terminal-panel.active {
+            display: block;
+        }
+
+        .terminal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 8px 8px 8px;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 8px;
+        }
+
+        .terminal-tabs {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-tab {
+            padding: 2px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+
+        .terminal-tab.active {
+            background: var(--primary-color);
+        }
+
+        .terminal-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .terminal-action {
+            cursor: pointer;
+            color: var(--text-light);
+        }
+
+        .terminal-action:hover {
+            color: var(--text-color);
+        }
+
+        .terminal-content {
+            padding-left: 12px;
+            position: relative;
+        }
+
+        .terminal-prompt {
+            color: var(--primary-light);
+        }
+
+        .terminal-output {
+            white-space: pre-wrap;
+            margin-bottom: 8px;
+        }
+
+        /* Editor Split View */
+        .editor-split {
+            display: flex;
+            flex: 1;
+            height: 100%;
+            position: relative;
+        }
+
+        .editor-pane {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border-right: 1px solid var(--border-color);
+        }
+
+        /* Search Panel */
+        .search-panel {
+                display: none;
+            padding: 12px;
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .search-panel.active {
+            display: block;
+        }
+
+        .search-container {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: var(--bg-darker);
+            border: 1px solid var(--border-color);
+            border-radius: 3px;
+            color: var(--text-color);
+            padding: 6px 10px;
+            font-size: 12px;
+            outline: none;
+        }
+
+        .search-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .search-button {
+            background: var(--primary-color);
+            border: none;
+            border-radius: 3px;
+            color: white;
+            padding: 0 12px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .search-options {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            font-size: 11px;
+        }
+
+        .search-option {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .search-checkbox {
+            accent-color: var(--primary-color);
+        }
+
+        .search-results {
+            margin-top: 8px;
+            font-size: 12px;
+        }
+
+        .search-result-item {
+            padding: 4px 8px;
+            cursor: pointer;
+            border-radius: 3px;
+        }
+
+        .search-result-item:hover {
+            background: var(--bg-lighter);
+        }
+
+        /* Breadcrumbs */
+        .breadcrumbs {
+            height: 22px;
+            background: var(--bg-dark);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            padding: 0 15px;
+            font-size: 12px;
+            color: var(--text-light);
+            overflow-x: auto;
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+        }
+
+        .breadcrumb-separator {
+            margin: 0 8px;
+            color: var(--text-dim);
+        }
+
+        /* Add spacing control */
+        .editor-controls {
+            position: absolute;
+            top: 5px;
+            right: 15px;
+            display: flex;
+                gap: 10px;
+            z-index: 10;
+            background: var(--bg-dark);
+            border-radius: 3px;
+            padding: 4px;
+            box-shadow: var(--dropdown-shadow);
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .editor-controls:hover {
+            opacity: 1;
+        }
+
+        .editor-control {
+            cursor: pointer;
+            color: var(--text-light);
+            font-size: 12px;
+            padding: 2px 6px;
+            border-radius: 2px;
+        }
+
+        .editor-control:hover {
+            background: var(--bg-lighter);
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Activity Bar (Left-most sidebar) -->
+        <div class="activity-bar">
+            <div class="activity-item active">
+                <i class="fas fa-folder"></i>
+            </div>
+            <div class="activity-item">
+                <i class="fas fa-search"></i>
+            </div>
+            <div class="activity-item">
+                <i class="fas fa-code-branch"></i>
+            </div>
+            <div class="activity-item">
+                <i class="fas fa-bug"></i>
+            </div>
+            <div class="activity-item">
+                <i class="fas fa-plug"></i>
+            </div>
+            <div style="flex: 1;"></div>
+            <div class="activity-item">
+                <i class="fas fa-cog"></i>
+            </div>
+        </div>
+        
+        <!-- Sidebar (File Explorer) -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <span>EXPLORER</span>
+                <div class="sidebar-header-actions">
+                    <span class="sidebar-action"><i class="fas fa-ellipsis-h"></i></span>
+                </div>
+            </div>
+            <div class="sidebar-content">
+                <div class="file-explorer">
+                    <div class="explorer-section">
+                        <div class="explorer-section-header">
+                            <div class="explorer-section-title">
+                                <i class="fas fa-chevron-down"></i>
+                                <span>Advanced autocompletion editor</span>
+                            </div>
+                            <div class="explorer-section-actions">
+                                <i class="fas fa-plus"></i>
+                            </div>
+                        </div>
+                        <div class="folder-item">
+                            <i class="fas fa-folder file-icon"></i>
+                            <span>Backend</span>
+                        </div>
+                        <div class="folder-item">
+                            <i class="fas fa-folder-open file-icon"></i>
+                            <span>frontend</span>
+                        </div>
+                        <div class="file-item">
+                            <i class="fas fa-file-code file-icon"></i>
+                            <span>index.html</span>
+                        </div>
+                        <div class="file-item active">
+                            <i class="fas fa-file-alt file-icon"></i>
+                            <span>editor.txt</span>
+                        </div>
+                        <div class="file-item">
+                            <i class="fas fa-file file-icon"></i>
+                            <span>README.md</span>
+                        </div>
+                    </div>
+                    <div class="explorer-section">
+                        <div class="explorer-section-header">
+                            <div class="explorer-section-title">
+                                <i class="fas fa-chevron-right"></i>
+                                <span>OUTLINE</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Editor Area -->
+        <div class="editor-container">
+            <div class="breadcrumbs">
+                <div class="breadcrumb-item">editor</div>
+                <div class="breadcrumb-separator">/</div>
+                <div class="breadcrumb-item">editor.txt</div>
+            </div>
+            
+            <div class="editor-tabs">
+                <div class="editor-tab active">
+                    <i class="fas fa-file-alt"></i>
+                    <span>editor.txt</span>
+                    <span class="tab-close"><i class="fas fa-times"></i></span>
+                </div>
+                <div class="editor-tab">
+                    <i class="fas fa-plus"></i>
+                </div>
+            </div>
+            
+            <div class="search-panel">
+                <div class="search-container">
+                    <input type="text" class="search-input" placeholder="Search in file...">
+                    <button class="search-button">Find</button>
+                </div>
+                <div class="search-options">
+                    <div class="search-option">
+                        <input type="checkbox" id="case-sensitive" class="search-checkbox">
+                        <label for="case-sensitive">Match case</label>
+                    </div>
+                    <div class="search-option">
+                        <input type="checkbox" id="whole-word" class="search-checkbox">
+                        <label for="whole-word">Whole word</label>
+                    </div>
+                    <div class="search-option">
+                        <input type="checkbox" id="regex" class="search-checkbox">
+                        <label for="regex">Use regex</label>
+                    </div>
+                </div>
+                <div class="search-results">
+                    <!-- Results will appear here dynamically -->
+                </div>
+            </div>
+            
+            <div class="editor-split">
+                <div class="editor-pane">
+                    <div class="editor-wrapper">
+                        <div class="editor-gutter" id="line-numbers">
+                            <!-- Line numbers will be added here dynamically -->
+                        </div>
+                        
+                        <div class="editor-content">
+                            <div class="highlight-line" id="current-line" style="display: none;"></div>
+                            <textarea id="editor" spellcheck="false" placeholder="Start typing to see suggestions..."></textarea>
+                        </div>
+                        
+                        <div class="minimap" id="minimap"></div>
+                        
+                        <div class="editor-scrollbar">
+                            <div class="scrollbar-thumb"></div>
+                        </div>
+                        
+                        <div class="editor-controls">
+                            <div id="toggle-wrap" class="editor-control" title="Toggle Word Wrap"><i class="fas fa-exchange-alt"></i></div>
+                            <div id="increase-font" class="editor-control" title="Increase Font Size"><i class="fas fa-plus"></i></div>
+                            <div id="decrease-font" class="editor-control" title="Decrease Font Size"><i class="fas fa-minus"></i></div>
+                            <div id="toggle-spaces" class="editor-control" title="Show/Hide Whitespace"><i class="fas fa-paragraph"></i></div>
+                        </div>
+                        
+                        <div id="dropdown"></div>
+                        
+                        <div class="tooltip" id="code-tooltip">
+                            <div class="tooltip-title">Function: fetchSuggestions</div>
+                            <div class="tooltip-content">
+                                Fetches autocompletion suggestions from the server based on the provided prefix.
+                            </div>
+                        </div>
+                        
+                        <div class="context-menu" id="context-menu">
+                            <div class="menu-item">
+                                <i class="fas fa-cut"></i>
+                                <span>Cut</span>
+                                <span class="menu-shortcut">Ctrl+X</span>
+                            </div>
+                            <div class="menu-item">
+                        <i class="fas fa-copy"></i>
+                        <span>Copy</span>
+                                <span class="menu-shortcut">Ctrl+C</span>
+                </div>
+                            <div class="menu-item">
+                                <i class="fas fa-paste"></i>
+                                <span>Paste</span>
+                                <span class="menu-shortcut">Ctrl+V</span>
+                </div>
+                            <div class="menu-separator"></div>
+                            <div class="menu-item">
+                                <i class="fas fa-code"></i>
+                                <span>Format Document</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Second editor pane will be added dynamically when split -->
+            </div>
+            
+            <div class="terminal-panel">
+                <div class="terminal-header">
+                    <div class="terminal-tabs">
+                        <div class="terminal-tab active">TERMINAL</div>
+                        <div class="terminal-tab">OUTPUT</div>
+                        <div class="terminal-tab">PROBLEMS</div>
+            </div>
+                    <div class="terminal-actions">
+                        <div class="terminal-action"><i class="fas fa-plus"></i></div>
+                        <div class="terminal-action"><i class="fas fa-trash"></i></div>
+                        <div class="terminal-action"><i class="fas fa-expand"></i></div>
+                    </div>
+                </div>
+                <div class="terminal-content">
+                    <div class="terminal-output">Welcome to Advanced Code Editor v1.0.0</div>
+                    <div class="terminal-line">
+                        <span class="terminal-prompt">$ </span>
+                        <span contenteditable="true" class="terminal-input"></span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-bar">
+                <div class="status-left">
+                    <div class="status-item">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Ready</span>
+                </div>
+                    <div class="status-item" id="cursor-position">
+                        <span>Ln 1, Col 1</span>
+                </div>
+            </div>
+                <div class="status-right">
+                    <div class="status-item" id="word-count">
+                        <span>Words: 0</span>
+                    </div>
+                    <div class="status-item">
+                        <span>UTF-8</span>
+                    </div>
+                    <div class="status-item">
+                        <span>Plain Text</span>
+                    </div>
+                </div>
+                <div class="status-item terminal-toggle">
+                    <i class="fas fa-terminal"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // DOM Elements
+            const editor = document.getElementById('editor');
+        const lineNumbers = document.getElementById('line-numbers');
+        const dropdown = document.getElementById('dropdown');
+            const wordCount = document.getElementById('word-count');
+        const cursorPosition = document.getElementById('cursor-position');
+        const currentLine = document.getElementById('current-line');
+            
+        // Variables
+            let typingTimer;
+        let activeIndex = 0;
+        let suggestions = [];
+        const typingInterval = 100; // ms
+        
+        // Initialize line numbers
+        function updateLineNumbers() {
+            const lines = editor.value.split('\n');
+            lineNumbers.innerHTML = '';
+            for (let i = 0; i < lines.length; i++) {
+                const lineNumber = document.createElement('div');
+                lineNumber.className = 'line-number';
+                lineNumber.textContent = i + 1;
+                lineNumbers.appendChild(lineNumber);
+            }
+        }
+        
+        // Highlight current line
+        function highlightCurrentLine() {
+            const text = editor.value.substring(0, editor.selectionStart);
+            const lines = text.split('\n');
+            const lineNumber = lines.length;
+            const lineHeight = 22; // line height in pixels
+            
+            currentLine.style.top = ((lineNumber - 1) * lineHeight) + 'px';
+            currentLine.style.display = 'block';
+        }
+        
+        // Sync scrolling
+        editor.addEventListener('scroll', () => {
+            lineNumbers.scrollTop = editor.scrollTop;
+            currentLine.style.display = 'none';
+        });
+        
+        // Update cursor position indicator
+        function updateCursorPosition() {
+            const text = editor.value.substring(0, editor.selectionStart);
+            const lines = text.split('\n');
+            const lineNumber = lines.length;
+            const columnNumber = lines[lines.length - 1].length + 1;
+            cursorPosition.innerHTML = `<span>Ln ${lineNumber}, Col ${columnNumber}</span>`;
+            
+            highlightCurrentLine();
+        }
+        
+        // Update word count
+        function updateWordCount() {
+            const text = editor.value;
+            const words = text.trim() ? text.match(/\S+/g)?.length || 0 : 0;
+            wordCount.innerHTML = `<span>Words: ${words}</span>`;
+        }
+        
+        // Position dropdown at current cursor
+        function positionDropdown() {
+            // Get cursor position
+            const cursorPos = editor.selectionStart;
+            const text = editor.value.substring(0, cursorPos);
+            const lines = text.split('\n');
+            const currentLine = lines.length;
+            const currentCol = lines[lines.length - 1].length;
+            
+            // Get editor position
+            const rect = editor.getBoundingClientRect();
+            const lineHeight = 22; // Fixed line height
+            const letterWidth = 8.4; // approximate for monospace
+            
+            // Position dropdown directly below the text that is being typed
+            const top = rect.top + (currentLine - 1) * lineHeight + lineHeight + 5;
+            
+            // Calculate the left position based on the start of the current word
+            const currentLineText = lines[lines.length - 1];
+            const words = currentLineText.split(/\s+/);
+            const currentWord = words[words.length - 1];
+            const wordStartCol = currentLineText.length - currentWord.length;
+            const left = rect.left + wordStartCol * letterWidth + 15;
+            
+            dropdown.style.top = `${top}px`;
+            dropdown.style.left = `${left}px`;
+        }
+        
+        // Show suggestions
+        function showDropdown(items) {
+            suggestions = items || [];
+            
+            if (suggestions.length === 0) {
+                hideDropdown();
+                return;
+            }
+            
+            dropdown.innerHTML = '';
+            activeIndex = 0;
+            
+            suggestions.forEach((item, index) => {
+                const div = document.createElement('div');
+                div.className = `dropdown-item ${index === 0 ? 'active' : ''}`;
+                div.innerHTML = `
+                    <span class="item-icon"><i class="fas fa-lightbulb"></i></span>
+                    <div class="item-content">
+                        <span class="item-name">${item}</span>
+                        <span class="item-type">suggestion</span>
+                    </div>
+                    ${index === 0 ? '<span class="item-right">Tab</span>' : ''}
+                `;
+                div.onclick = () => {
+                    insertSuggestion(item);
+                };
+                dropdown.appendChild(div);
+            });
+            
+            positionDropdown();
+            dropdown.style.display = 'block';
+        }
+        
+        // Show loading state
+        function showLoading() {
+            dropdown.innerHTML = '<div class="loading"><i class="fas fa-spinner"></i> Loading suggestions...</div>';
+            positionDropdown();
+            dropdown.style.display = 'block';
+        }
+        
+        // Hide dropdown
+        function hideDropdown() {
+            dropdown.style.display = 'none';
+            suggestions = [];
+        }
+        
+        // Insert suggestion
+        function insertSuggestion(text) {
+            const cursorPos = editor.selectionStart;
+            const currentText = editor.value;
+            
+            // Find last word before cursor
+            const beforeCursor = currentText.substring(0, cursorPos);
+            const words = beforeCursor.split(/\s+/);
+            const lastWord = words[words.length - 1];
+            
+            // Replace last word with suggestion
+            const startPos = cursorPos - lastWord.length;
+            const newText = currentText.substring(0, startPos) + text + currentText.substring(cursorPos);
+            
+            editor.value = newText;
+            editor.selectionStart = editor.selectionEnd = startPos + text.length;
+            
+            hideDropdown();
+                    updateWordCount();
+                updateLineNumbers();
+                updateCursorPosition();
+            editor.focus();
+        }
+        
+        // Fetch suggestions
+        function fetchSuggestions(prefix) {
+            if (prefix.length < 2) {
+                hideDropdown();
+                return;
+            }
+            
+            showLoading();
+            
+            fetch(`/api/suggestions?prefix=${prefix}`)
+                .then(res => res.json())
+                .then(data => {
+                    showDropdown(data);
+                })
+                .catch(err => {
+                    console.error('Error fetching suggestions:', err);
+                    hideDropdown();
+                });
+        }
+        
+        // Input event
+            editor.addEventListener('input', () => {
+                updateWordCount();
+            updateLineNumbers();
+            updateCursorPosition();
+            
+            // Get current word
+            const cursorPos = editor.selectionStart;
+            const text = editor.value.substring(0, cursorPos);
+            const words = text.split(/\s+/);
+                const currentWord = words[words.length - 1];
+                
+                clearTimeout(typingTimer);
+                
+            if (currentWord && currentWord.length >= 2) {
+                    typingTimer = setTimeout(() => {
+                    fetchSuggestions(currentWord);
+                }, typingInterval);
+                        } else {
+                hideDropdown();
+            }
+        });
+        
+        // Keydown event for navigation
+        editor.addEventListener('keydown', (e) => {
+            if (dropdown.style.display === 'block') {
+                const items = dropdown.querySelectorAll('.dropdown-item');
+                
+                switch (e.key) {
+                    case 'ArrowDown':
+                        e.preventDefault();
+                        items[activeIndex].classList.remove('active');
+                        activeIndex = (activeIndex + 1) % items.length;
+                        items[activeIndex].classList.add('active');
+                        items[activeIndex].scrollIntoView({ block: 'nearest' });
+                        break;
+                        
+                    case 'ArrowUp':
+                        e.preventDefault();
+                        items[activeIndex].classList.remove('active');
+                        activeIndex = (activeIndex - 1 + items.length) % items.length;
+                        items[activeIndex].classList.add('active');
+                        items[activeIndex].scrollIntoView({ block: 'nearest' });
+                        break;
+                        
+                    case 'Tab':
+                    case 'Enter':
+                        e.preventDefault();
+                        if (suggestions.length > 0) {
+                            insertSuggestion(suggestions[activeIndex]);
+                        }
+                        break;
+                        
+                    case 'Escape':
+                        hideDropdown();
+                        break;
+                }
+            }
+            
+            if (e.key === 'Tab' && dropdown.style.display !== 'block') {
+                e.preventDefault();
+                // Insert tab character (4 spaces)
+                const start = editor.selectionStart;
+                const end = editor.selectionEnd;
+                editor.value = editor.value.substring(0, start) + '    ' + editor.value.substring(end);
+                editor.selectionStart = editor.selectionEnd = start + 4;
+                updateLineNumbers();
+                updateCursorPosition();
+            }
+        });
+        
+        // Click event for line numbers
+        lineNumbers.addEventListener('click', (e) => {
+            if (e.target.classList.contains('line-number')) {
+                const lineNumber = parseInt(e.target.textContent) - 1;
+                const lines = editor.value.split('\n');
+                let position = 0;
+                
+                for (let i = 0; i < lineNumber; i++) {
+                    position += lines[i].length + 1;
+                }
+                
+                editor.focus();
+                editor.selectionStart = editor.selectionEnd = position;
+                updateCursorPosition();
+            }
+        });
+        
+        // Click outside to hide dropdown
+        document.addEventListener('click', (e) => {
+            if (!dropdown.contains(e.target) && e.target !== editor) {
+                hideDropdown();
+            }
+        });
+        
+        // Initialize
+            updateLineNumbers();
+            updateCursorPosition();
+        updateWordCount();
+        
+        // Add context menu
+        const contextMenu = document.getElementById('context-menu');
+        
+        editor.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            contextMenu.style.display = 'block';
+            contextMenu.style.top = e.pageY + 'px';
+            contextMenu.style.left = e.pageX + 'px';
+        });
+        
+        document.addEventListener('click', () => {
+            contextMenu.style.display = 'none';
+        });
+        
+        // Apply simple syntax highlighting demonstration
+        function applySyntaxHighlighting() {
+            // This is just a placeholder - in a real application you'd use a library like Prism or highlight.js
+            setTimeout(() => {
+                updateCursorPosition();
+            }, 10);
+        }
+        
+        editor.addEventListener('keyup', applySyntaxHighlighting);
+        
+        // Set focus to editor
+        editor.focus();
+        
+        // DOM Elements - Add new elements
+        const searchPanel = document.querySelector('.search-panel');
+        const searchButton = document.querySelector('.search-button');
+        const searchInput = document.querySelector('.search-input');
+        const searchResults = document.querySelector('.search-results');
+        const terminalPanel = document.querySelector('.terminal-panel');
+        const terminalToggle = document.querySelector('.terminal-toggle');
+        const editorContainer = document.querySelector('.editor-container');
+        const editorSplit = document.querySelector('.editor-split');
+        
+        // Terminal toggle
+        terminalToggle.addEventListener('click', () => {
+            terminalPanel.classList.toggle('active');
+            editorContainer.style.gridTemplateRows = terminalPanel.classList.contains('active') 
+                ? '22px auto 1fr 200px 22px' 
+                : '22px auto 1fr 0 22px';
+        });
+        
+        // Terminal input handling
+        const terminalInput = document.querySelector('.terminal-input');
+        terminalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const command = terminalInput.textContent;
+                const outputDiv = document.createElement('div');
+                outputDiv.className = 'terminal-output';
+                
+                // Simple command processor
+                switch (command) {
+                    case 'help':
+                        outputDiv.textContent = 'Available commands: help, clear, date, echo [text]';
+                        break;
+                    case 'clear':
+                        document.querySelectorAll('.terminal-output').forEach(el => el.remove());
+                        return;
+                    case 'date':
+                        outputDiv.textContent = new Date().toString();
+                        break;
+                    default:
+                        if (command.startsWith('echo ')) {
+                            outputDiv.textContent = command.substring(5);
+        } else {
+                            outputDiv.textContent = `Command not found: ${command}`;
+                        }
+                }
+                
+                const terminalContent = document.querySelector('.terminal-content');
+                terminalContent.insertBefore(outputDiv, terminalInput.parentElement);
+                
+                // Create new prompt
+                const newLine = document.createElement('div');
+                newLine.className = 'terminal-line';
+                newLine.innerHTML = '<span class="terminal-prompt">$ </span><span contenteditable="true" class="terminal-input"></span>';
+                terminalContent.appendChild(newLine);
+                
+                // Focus new input and cleanup old one
+                terminalInput.contentEditable = false;
+                terminalInput.classList.remove('terminal-input');
+                const newInput = newLine.querySelector('.terminal-input');
+                newInput.focus();
+                
+                // Update terminal input reference
+                terminalInput = newInput;
+                terminalInput.addEventListener('keydown', arguments.callee);
+            }
+        });
+        
+        // Search functionality
+        searchButton.addEventListener('click', () => {
+            const searchTerm = searchInput.value;
+            if (!searchTerm) return;
+            
+            const text = editor.value;
+            const caseSensitive = document.getElementById('case-sensitive').checked;
+            const wholeWord = document.getElementById('whole-word').checked;
+            
+            let results = [];
+            let regex;
+            
+            if (document.getElementById('regex').checked) {
+                try {
+                    regex = new RegExp(searchTerm, caseSensitive ? 'g' : 'gi');
+                } catch (e) {
+                    searchResults.innerHTML = `<div class="search-result-item" style="color:red">Invalid regex: ${e.message}</div>`;
+                    return;
+                }
+            } else {
+                const escapedTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const pattern = wholeWord ? `\\b${escapedTerm}\\b` : escapedTerm;
+                regex = new RegExp(pattern, caseSensitive ? 'g' : 'gi');
+            }
+            
+            const lines = text.split('\n');
+            lines.forEach((line, lineIndex) => {
+                let match;
+                while ((match = regex.exec(line)) !== null) {
+                    results.push({
+                        lineNumber: lineIndex + 1,
+                        columnStart: match.index,
+                        columnEnd: match.index + match[0].length,
+                        text: line.trim(),
+                        match: match[0]
+                    });
+                }
+            });
+            
+            if (results.length > 0) {
+                searchResults.innerHTML = '';
+                results.forEach(result => {
+                    const resultItem = document.createElement('div');
+                    resultItem.className = 'search-result-item';
+                    resultItem.innerHTML = `Line ${result.lineNumber}: ${result.text.substring(0, 50)}${result.text.length > 50 ? '...' : ''}`;
+                    resultItem.addEventListener('click', () => {
+                        highlightSearchResult(result);
+                    });
+                    searchResults.appendChild(resultItem);
+                });
+            } else {
+                searchResults.innerHTML = '<div class="search-result-item">No results found</div>';
+            }
+        });
+        
+        function highlightSearchResult(result) {
+            const lines = editor.value.split('\n');
+            let position = 0;
+            
+            for (let i = 0; i < result.lineNumber - 1; i++) {
+                position += lines[i].length + 1;
+            }
+            
+            position += result.columnStart;
+            
+            editor.focus();
+            editor.selectionStart = position;
+            editor.selectionEnd = position + (result.columnEnd - result.columnStart);
+            updateCursorPosition();
+            
+            // Scroll to make selection visible
+            editor.scrollTop = (result.lineNumber - 1) * 22 - 100;
+        }
+        
+        // Toggle search panel
+        document.querySelector('.activity-item:nth-child(2)').addEventListener('click', () => {
+            searchPanel.classList.toggle('active');
+            if (searchPanel.classList.contains('active')) {
+                searchInput.focus();
+            }
+        });
+        
+        // Split view functionality
+        let isSplit = false;
+        
+        function toggleSplitView() {
+            if (isSplit) {
+                // Remove second pane
+                document.querySelector('.editor-pane:nth-child(2)').remove();
+                isSplit = false;
+            } else {
+                // Create second pane
+                const newPane = document.createElement('div');
+                newPane.className = 'editor-pane';
+                newPane.innerHTML = `
+                    <div class="editor-wrapper">
+                        <div class="editor-gutter"></div>
+                        <div class="editor-content">
+                            <div class="highlight-line" style="display: none;"></div>
+                            <textarea spellcheck="false" placeholder="Second editor pane"></textarea>
+                        </div>
+                        <div class="editor-scrollbar">
+                            <div class="scrollbar-thumb"></div>
+                        </div>
+                    </div>
+                `;
+                editorSplit.appendChild(newPane);
+                
+                // Initialize line numbers for second pane
+                const secondEditor = newPane.querySelector('textarea');
+                const secondGutter = newPane.querySelector('.editor-gutter');
+                
+                secondEditor.addEventListener('input', () => {
+                    const lines = secondEditor.value.split('\n');
+                    secondGutter.innerHTML = '';
+                    for (let i = 0; i < lines.length; i++) {
+                        const lineNumber = document.createElement('div');
+                        lineNumber.className = 'line-number';
+                        lineNumber.textContent = i + 1;
+                        secondGutter.appendChild(lineNumber);
+                    }
+                });
+                
+                // Add initial line number
+                const lineNumber = document.createElement('div');
+                lineNumber.className = 'line-number';
+                lineNumber.textContent = '1';
+                secondGutter.appendChild(lineNumber);
+                
+                isSplit = true;
+            }
+        }
+        
+        // Add split view button to the context menu
+        const splitViewItem = document.createElement('div');
+        splitViewItem.className = 'menu-item';
+        splitViewItem.innerHTML = '<i class="fas fa-columns"></i><span>Split Editor</span>';
+        splitViewItem.addEventListener('click', toggleSplitView);
+        
+        const menuSeparator = document.querySelector('.menu-separator');
+        contextMenu.insertBefore(splitViewItem, menuSeparator);
+        
+        // Adjust editor container layout for terminal
+        editorContainer.style.display = 'grid';
+        editorContainer.style.gridTemplateRows = '22px auto 1fr 0 22px';
+        editorContainer.style.height = '100%';
+        
+        // Initialize with a properly sized editor
+        updateLineNumbers();
+        updateCursorPosition();
+        updateWordCount();
+        
+        // Theme toggle in settings menu
+        document.querySelector('.activity-item:last-child').addEventListener('click', () => {
+            // Toggle between dark and light theme (just a demonstration)
+            document.body.classList.toggle('light-theme');
+        });
+
+        // Toggle word wrap
+        const toggleWrap = document.getElementById('toggle-wrap');
+        toggleWrap.addEventListener('click', () => {
+            if (editor.style.whiteSpace === 'pre-wrap' || editor.style.whiteSpace === '') {
+                editor.style.whiteSpace = 'pre';
+                editor.style.overflowX = 'auto';
+                toggleWrap.innerHTML = '<i class="fas fa-align-left"></i>';
+            } else {
+                editor.style.whiteSpace = 'pre-wrap';
+                editor.style.overflowX = 'hidden';
+                toggleWrap.innerHTML = '<i class="fas fa-exchange-alt"></i>';
+            }
+        });
+
+        // Font size controls
+        let currentFontSize = 14;
+        const increaseFontBtn = document.getElementById('increase-font');
+        const decreaseFontBtn = document.getElementById('decrease-font');
+
+        increaseFontBtn.addEventListener('click', () => {
+            if (currentFontSize < 24) {
+                currentFontSize += 1;
+                editor.style.fontSize = `${currentFontSize}px`;
+                editor.style.lineHeight = `${currentFontSize + 8}px`;
+                updateLineNumbers();
+            }
+        });
+
+        decreaseFontBtn.addEventListener('click', () => {
+            if (currentFontSize > 10) {
+                currentFontSize -= 1;
+                editor.style.fontSize = `${currentFontSize}px`;
+                editor.style.lineHeight = `${currentFontSize + 8}px`;
+                updateLineNumbers();
+            }
+        });
+
+        // Toggle whitespace visualization
+        const toggleSpaces = document.getElementById('toggle-spaces');
+        toggleSpaces.addEventListener('click', () => {
+            document.body.classList.toggle('show-whitespace');
+            if (document.body.classList.contains('show-whitespace')) {
+                // Add CSS to visualize spaces and tabs
+                const style = document.createElement('style');
+                style.id = 'whitespace-style';
+                style.textContent = `
+                    #editor {
+                        --space: '·';
+                        --tab: '→';
+                    }
+                    #editor.show-whitespace::before {
+                        content: attr(data-content);
+                        position: absolute;
+                        pointer-events: none;
+                        color: var(--text-dim);
+                        opacity: 0.5;
+                    }
+                `;
+                document.head.appendChild(style);
+                
+                // Create a visual representation of whitespace
+                function visualizeWhitespace() {
+                    const text = editor.value;
+                    const visualText = text
+                        .replace(/ /g, '·')
+                        .replace(/\t/g, '→\t');
+                    editor.setAttribute('data-content', visualText);
+                }
+                
+                editor.addEventListener('input', visualizeWhitespace);
+                visualizeWhitespace();
+            } else {
+                const style = document.getElementById('whitespace-style');
+                if (style) style.remove();
+                editor.removeAttribute('data-content');
+            }
+        });
+    </script>
+</body>
+</html>
