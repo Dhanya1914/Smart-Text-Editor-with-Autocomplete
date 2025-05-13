@@ -2,6 +2,8 @@
 
 A modern, responsive text editor with powerful word suggestion/autocomplete functionality built with Python FastAPI backend and vanilla JavaScript frontend.
 
+https://smart-text-editor-with-autocomplete.onrender.com/
+
 ## Features
 - Intelligent word suggestions with 300+ built-in words
 - External API integration with DataMuse API as fallback
